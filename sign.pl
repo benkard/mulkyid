@@ -53,7 +53,7 @@ sub sign($$$$) {
     principal    => { email => $email }
   };
 
-  my $header = {alg => "RS256"};
+  my $header = {typ => "JWT", alg => "RS256"};
   my $header_bytes = encode_base64_url(encode_json($header));
   my $cert_bytes   = encode_base64_url(encode_json($cert));
   my $string_to_sign = $header_bytes . "." . $cert_bytes;
