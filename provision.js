@@ -55,9 +55,11 @@ jQuery(function($) {
         console.log('cert_duration: ' + cert_duration);
         ifLoggedIn(email, function() {
             navigator.id.genKeyPair(function(pubkey) {
+                if (typeof(pubkey) === 'string') {
+                    pubkey = JSON.parse(pubkey);
+                }
                 sign(email, pubkey, cert_duration);
             });
         });
     });
 });
-
