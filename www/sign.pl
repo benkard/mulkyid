@@ -86,7 +86,7 @@ while (my $cgi = new CGI::Fast) {
   if ($email =~ /^(.*?)@(.*)/) { $domain = $2; }
 
   die "User is not authorized to use this email address"
-    unless ($session_user ~~ email_users($email));
+    unless ($session_user ~~ [email_users($email)]);
 
   my $sig = sign $key, decode_json($user_pubkey), $email, $duration, $domain;
   say encode_json({signature => $sig});

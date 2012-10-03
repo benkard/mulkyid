@@ -35,7 +35,7 @@ while (my $cgi = new CGI::Fast) {
 
   my $email        = $cgi->param('email')    or die "No email address supplied";
   my $session_user = $session->param('user');
-  if ($session_user ~~ email_users($email)) {
+  if ($session_user ~~ [email_users($email)]) {
     say encode_json({logged_in_p => 1});
   } else {
     say encode_json({logged_in_p => 0});

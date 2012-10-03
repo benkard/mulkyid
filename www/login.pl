@@ -61,7 +61,7 @@ while (my $cgi = new CGI::Fast) {
   my $email    = $cgi->param('email')    or die "No email address provided";
   my $password = $cgi->param('password') or die "Empty password";
 
-  for my $user (email_users($email)) {
+  for my $user ([email_users($email)]) {
     #say STDERR "Trying user: $user";
     if (check_password($user, $password)) {
       $session->param('user', $user);
