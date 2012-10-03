@@ -10,8 +10,7 @@ use File::Copy;
 use LWP::Simple qw(getstore);
 
 sub printspec($$) {
-  my ($outfile, $pemfile) = @_;
-  my $key = Crypt::OpenSSL::RSA->new_private_key(scalar read_file($pemfile));
+  my ($outfile, $key) = @_;
   my ($n, $e, @stuff) = $key->get_key_parameters;
   say $outfile
       encode_json({"public-key"     => {e => $e->to_decimal, n => $n->to_decimal, algorithm => "RS"},
@@ -19,31 +18,40 @@ sub printspec($$) {
                    "provisioning"   => "/browserid/provision.html"});
 };
 
-my $wwwuser = "www";
 my $configpath = "etc/mulkid";
+my $pemfile = "$configpath/rsa2048.pem";
 
 # Download jQuery.
 make_path("www/jquery");
-say "Fetching jQuery...";
-getstore("http://code.jquery.com/jquery-1.7.2.min.js", "www/jquery/jquery.js");
+if (stat("www/jquery/jquery.js")) {
+  say "Using existing copy of jQuery (www/jquery/jquery.js).";
+} else {
+  say "Fetching jQuery...";
+  getstore("http://code.jquery.com/jquery-1.7.2.min.js", "www/jquery/jquery.js")
+    or die "Could not fetch jQuery";
+}
 
 # Generate the private key.
-say "Generating private key...";
-#FIXME: Don't do this if the private key already exists!
-system "openssl genpkey -algorithm rsa -out rsa2048.pem -pkeyopt rsa_keygen_bits:2048";
-
-# Install the private key.
-make_path($configpath);
-my $pemfile = "$configpath/rsa2048.pem";
-move("rsa2048.pem", $pemfile) or die "Could not move rsa2048.pem to $configpath";
-system "chmod go=      $pemfile";
-system "chown $wwwuser $pemfile";
+my $key;
+if (stat($pemfile)) {
+  say "Using existing private key ($pemfile).";
+  $key = Crypt::OpenSSL::RSA->new_private_key(scalar read_file($pemfile));
+} else {
+  say "Generating private key...";
+  $key = Crypt::OpenSSL::RSA->generate_key(2048);
+  make_path($configpath);
+  open(my $keyfile, ">", $pemfile)
+    or die "Cannot open $pemfile for writing: $!";
+  print $keyfile $key->get_private_key_string();
+  close $keyfile;
+  system "chmod 440 $pemfile";
+}
 
 # Generate spec file.
-open(my $out, ">", "browserid.json")
+open(my $specfile, ">", "browserid.json")
   or die "Cannot open browserid.json for writing: $!";
-printspec $out, $pemfile;
-close($out);
+printspec $specfile, $key;
+close($specfile);
 
 say "\n";
 say "******************************************************************";
