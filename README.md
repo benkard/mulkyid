@@ -41,6 +41,7 @@ The following CPAN modules need to be installed:
  * `Mail::IMAPTalk`
  * `Modern::Perl`
  * `Time::HiRes`
+ * `LWP::Simple` (for the setup process only)
 
 ### Key Setup and jQuery Download
 
