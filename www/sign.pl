@@ -65,12 +65,15 @@ sub sign($$$$) {
 }
 
 
+our $MULKONF;
+do "config.pl";
+
 while (my $cgi = new CGI::Fast) {
   my $cookie = $cgi->cookie('mulkid_session') or die "No session cookie";
   my $session = new CGI::Session("driver:File", $cookie, {Directory=>"/tmp"}) or die "Invalid session cookie";
   print $cgi->header(-content_type => 'application/json; charset=UTF-8');
 
-  my $key = Crypt::OpenSSL::RSA->new_private_key(scalar read_file('/etc/mulkid/rsa2048.pem'));
+  my $key = Crypt::OpenSSL::RSA->new_private_key(scalar read_file($MULKONF->{pemfile}));
   $key->use_pkcs1_padding();
   $key->use_sha256_hash();
 
@@ -81,12 +84,13 @@ while (my $cgi = new CGI::Fast) {
   my $session_user = $session->param('user');
 
   my $alias;
-  if ($email =~ /^(.*?)@/) { $alias = $1; }
+  my $domain;
+  if ($email =~ /^(.*?)@(.*)/) { $alias = $1; $domain = $2; }
   my $email_users = $aliases->expand($alias) or die "User not found";
 
   die "User is not authorized to use this email address"
     unless ($session_user ~~ @$email_users);
 
-  my $sig = sign $key, decode_json($user_pubkey), $email, $duration;
+  my $sig = sign $key, decode_json($user_pubkey), $email, $duration, $domain;
   say encode_json({signature => $sig});
 }
