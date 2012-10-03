@@ -1,4 +1,5 @@
 #! /usr/bin/env perl
+# Copyright 2012, Matthias Andreas Benkard <code@mail.matthias.benkard.de>.
 
 use common::sense;
 use Modern::Perl;
@@ -18,7 +19,7 @@ sub printspec($$) {
                    "provisioning"   => "/browserid/provision.html"});
 };
 
-my $configpath = "etc/mulkid";
+my $configpath = "/etc/mulkyid";
 my $pemfile = "$configpath/rsa2048.pem";
 
 # Download jQuery.
