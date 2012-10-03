@@ -4,10 +4,10 @@
 
 ## Introduction
 
-This software provides a simple BrowserID primary (authenticating
-party) based on an existing local IMAP server setup.  Users use their
-IMAP login and password to authenticate themselves as the owner of
-their email address.
+This software provides a simple Mozilla Persona primary (also called
+an *authenticating party* or an *identity provider*) based on an existing
+local IMAP server setup.  Users use their IMAP login and password to
+authenticate themselves as the owner of their email address.
 
 The primary is implemented as a set of simple CGI scripts.
 
@@ -17,7 +17,9 @@ The primary is implemented as a set of simple CGI scripts.
 This software assumes that email addresses can be resolved to user
 names by way of `/etc/aliases` and that the user names provided
 therein are identical to those accepted by your IMAP server for
-purposes of authenticating.
+purposes of authenticating.  If no `/etc/aliases` file exists, the
+IMAP server needs to accept the name part of an e-mail address as a
+user name.
 
 If this is not true for your setup, you will need to hack the source
 code.
@@ -46,13 +48,11 @@ The following CPAN modules need to be installed:
 ### Key Setup and jQuery Download
 
 In order to generate an RSA private key and download necessary
-third-party components, run `setup.sh`.
+third-party components, run `setup.pl`.
 
-`setup.sh` will also generate a `browserid.json` file and prompt you
+`setup.pl` will also generate a `browserid.json` file and prompt you
 to put it wherever your web server will be able to serve it as
-`/.well-known/browserid`.  **It is very important to do this now**,
-because `browserid.org` will look at that location and *cache* the
-response, even if it is just a 404.
+`/.well-known/browserid`.
 
 
 ## License
