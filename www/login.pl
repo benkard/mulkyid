@@ -5,8 +5,6 @@ use common::sense;
 #use Modern::Perl 2011;
 use Modern::Perl;
 
-use Mail::ExpandAliases;
-
 use JSON;
 
 use CGI;
@@ -16,14 +14,16 @@ use CGI::Session;
 use Mail::IMAPTalk ;
 #use IO::Socket::SSL;
 
+do "common.pl";
 
-sub check_password($$) {
-  my ($user, $password) = @_;
+sub check_password($$$) {
+  my ($config, $user, $password) = @_;
 
   #my $socket = IO::Socket::SSL->new('imap.googlemail.com:imaps');
   my $imap = Mail::IMAPTalk->new(
   #  Socket   => $socket,
-    Server   => 'localhost',
+    Server   => $config->{imap_server},
+    Port     => $config->{imap_port},
     Username => $user,
     Password => $password,
     Uid      => 1
@@ -38,6 +38,9 @@ sub check_password($$) {
 
 
 while (my $cgi = new CGI::Fast) {
+  local $::MULKONF = { };
+  do "config.pl";
+
   my $cookie = $cgi->cookie('mulkid_session');
   my $session;
   if ($cookie) {
@@ -56,18 +59,12 @@ while (my $cgi = new CGI::Fast) {
                        -cookie       => $cookie);
   }
 
-  my $aliases = Mail::ExpandAliases->new("/etc/aliases");
-
   my $email    = $cgi->param('email')    or die "No email address provided";
   my $password = $cgi->param('password') or die "Empty password";
 
-  my $alias;
-  if ($email =~ /^(.*?)@/) { $alias = $1; }
-  my $users = $aliases->expand($alias);
-
-  for my $user (@$users) {
+  for my $user (email_users($::MULKONF, $email)) {
     #say STDERR "Trying user: $user";
-    if (check_password($user, $password)) {
+    if (check_password($::MULKONF, $user, $password)) {
       $session->param('user', $user);
       say encode_json({user => $user});
       exit 0;

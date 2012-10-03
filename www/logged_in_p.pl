@@ -13,10 +13,13 @@ use CGI;
 use CGI::Fast;
 use CGI::Session;
 
-use Mail::ExpandAliases;
+do "common.pl";
 
 
 while (my $cgi = new CGI::Fast) {
+  local $::MULKONF = { };
+  do "config.pl";
+
   print $cgi->header(-content_type => 'application/json; charset=UTF-8');
 
   my $cookie = $cgi->cookie('mulkid_session');
@@ -31,15 +34,9 @@ while (my $cgi = new CGI::Fast) {
     exit(0);
   }
 
-  my $aliases = Mail::ExpandAliases->new("/etc/aliases");
   my $email        = $cgi->param('email')    or die "No email address supplied";
   my $session_user = $session->param('user');
-
-  my $alias;
-  if ($email =~ /^(.*?)@/) { $alias = $1; }
-  my $email_users = $aliases->expand($alias) or die "User not found";
-
-  if ($session_user ~~ @$email_users) {
+  if ($session_user ~~ email_users($::MULKONF, $email)) {
     say encode_json({logged_in_p => 1});
   } else {
     say encode_json({logged_in_p => 0});

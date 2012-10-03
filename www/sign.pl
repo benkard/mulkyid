@@ -15,11 +15,11 @@ use CGI;
 use CGI::Fast;
 use CGI::Session;
 
-use Mail::ExpandAliases;
-
 use MIME::Base64 qw(encode_base64 decode_base64);
 
 use Time::HiRes qw(time);
+
+do "common.pl";
 
 
 sub decode_base64_url($) {
@@ -39,14 +39,14 @@ sub encode_base64_url($) {
 }
 
 
-sub sign($$$$) {
+sub sign($$$$$) {
   # NB.  Treating the jwcrypto code as the spec here.
-  my ($key, $client_pubkey, $email, $duration) = @_;
+  my ($key, $client_pubkey, $email, $duration, $domain) = @_;
 
   my $issued_at = int(1000*time);
 
   my $cert = {
-    iss          => "mulk.eu",
+    iss          => $domain,
     exp          => $issued_at + 1000*$duration,
     iat          => $issued_at,
     "public-key" => $client_pubkey,
@@ -65,31 +65,28 @@ sub sign($$$$) {
 }
 
 
-our $MULKONF;
-do "config.pl";
-
 while (my $cgi = new CGI::Fast) {
+  local $::MULKONF = { };
+  do "config.pl";
+
   my $cookie = $cgi->cookie('mulkid_session') or die "No session cookie";
   my $session = new CGI::Session("driver:File", $cookie, {Directory=>"/tmp"}) or die "Invalid session cookie";
   print $cgi->header(-content_type => 'application/json; charset=UTF-8');
 
-  my $key = Crypt::OpenSSL::RSA->new_private_key(scalar read_file($MULKONF->{pemfile}));
+  my $key = Crypt::OpenSSL::RSA->new_private_key(scalar read_file($::MULKONF->{pemfile}));
   $key->use_pkcs1_padding();
   $key->use_sha256_hash();
 
-  my $aliases = Mail::ExpandAliases->new("/etc/aliases");
   my $user_pubkey  = $cgi->param('pubkey')   or die "Nothing to sign";
   my $duration     = $cgi->param('duration') || 24*3600;
   my $email        = $cgi->param('email')    or die "No email address supplied";
   my $session_user = $session->param('user');
 
-  my $alias;
   my $domain;
-  if ($email =~ /^(.*?)@(.*)/) { $alias = $1; $domain = $2; }
-  my $email_users = $aliases->expand($alias) or die "User not found";
+  if ($email =~ /^(.*?)@(.*)/) { $domain = $2; }
 
   die "User is not authorized to use this email address"
-    unless ($session_user ~~ @$email_users);
+    unless ($session_user ~~ email_users($::MULKONF, $email));
 
   my $sig = sign $key, decode_json($user_pubkey), $email, $duration, $domain;
   say encode_json({signature => $sig});
