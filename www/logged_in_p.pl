@@ -17,8 +17,7 @@ do "common.pl";
 
 
 while (my $cgi = new CGI::Fast) {
-  local $::MULKONF = { };
-  do "config.pl";
+  load_config();
 
   print $cgi->header(-content_type => 'application/json; charset=UTF-8');
 
@@ -36,7 +35,7 @@ while (my $cgi = new CGI::Fast) {
 
   my $email        = $cgi->param('email')    or die "No email address supplied";
   my $session_user = $session->param('user');
-  if ($session_user ~~ email_users($::MULKONF, $email)) {
+  if ($session_user ~~ email_users($email)) {
     say encode_json({logged_in_p => 1});
   } else {
     say encode_json({logged_in_p => 0});

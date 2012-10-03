@@ -16,14 +16,14 @@ use Mail::IMAPTalk ;
 
 do "common.pl";
 
-sub check_password($$$) {
-  my ($config, $user, $password) = @_;
+sub check_password($$) {
+  my ($user, $password) = @_;
 
   #my $socket = IO::Socket::SSL->new('imap.googlemail.com:imaps');
   my $imap = Mail::IMAPTalk->new(
   #  Socket   => $socket,
-    Server   => $config->{imap_server},
-    Port     => $config->{imap_port},
+    Server   => $::MULKONF->{imap_server},
+    Port     => $::MULKONF->{imap_port},
     Username => $user,
     Password => $password,
     Uid      => 1
@@ -38,8 +38,7 @@ sub check_password($$$) {
 
 
 while (my $cgi = new CGI::Fast) {
-  local $::MULKONF = { };
-  do "config.pl";
+  load_config();
 
   my $cookie = $cgi->cookie('mulkid_session');
   my $session;
@@ -62,9 +61,9 @@ while (my $cgi = new CGI::Fast) {
   my $email    = $cgi->param('email')    or die "No email address provided";
   my $password = $cgi->param('password') or die "Empty password";
 
-  for my $user (email_users($::MULKONF, $email)) {
+  for my $user (email_users($email)) {
     #say STDERR "Trying user: $user";
-    if (check_password($::MULKONF, $user, $password)) {
+    if (check_password($user, $password)) {
       $session->param('user', $user);
       say encode_json({user => $user});
       exit 0;

@@ -7,15 +7,18 @@ use Modern::Perl;
 
 use Mail::ExpandAliases;
 
+sub load_config() {
+  $::MULKONF = { };
+  do "config.pl";
+}
 
-sub email_users($$) {
-  ($config, $email) = @_;
+sub email_users($) {
+  my ($email) = @_;
   my $alias;
   if ($email =~ /^(.*?)@/) { $alias = $1; }
-  my $aliases_file = $config->{aliases};
+  my $aliases_file = $::MULKONF->{aliases};
   if (not ($aliases_file eq ".")) {
     my $aliases = Mail::ExpandAliases->new($aliases_file);
-    my $session_user = $session->param('user');
     my $email_users = $aliases->expand($alias) or die "User not found";
     return @$email_users;
   } else {

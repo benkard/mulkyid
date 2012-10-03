@@ -66,8 +66,8 @@ sub sign($$$$$) {
 
 
 while (my $cgi = new CGI::Fast) {
-  local $::MULKONF = { };
-  do "config.pl";
+  $::MULKONF = {};   # to silence a warning
+  load_config();
 
   my $cookie = $cgi->cookie('mulkid_session') or die "No session cookie";
   my $session = new CGI::Session("driver:File", $cookie, {Directory=>"/tmp"}) or die "Invalid session cookie";
@@ -86,7 +86,7 @@ while (my $cgi = new CGI::Fast) {
   if ($email =~ /^(.*?)@(.*)/) { $domain = $2; }
 
   die "User is not authorized to use this email address"
-    unless ($session_user ~~ email_users($::MULKONF, $email));
+    unless ($session_user ~~ email_users($email));
 
   my $sig = sign $key, decode_json($user_pubkey), $email, $duration, $domain;
   say encode_json({signature => $sig});
