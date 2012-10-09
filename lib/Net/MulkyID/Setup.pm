@@ -12,6 +12,7 @@ use File::Path qw(make_path);
 use File::Copy;
 use LWP::Simple qw(getstore);
 use Data::Dumper;
+#use autodie;
 
 use base 'Exporter';
 our @EXPORT = qw(setup);
@@ -80,7 +81,8 @@ sub setup() {
   } else {
     say "Generating private key...";
     $key = Crypt::OpenSSL::RSA->generate_key(2048);
-    make_path($configpath);
+    make_path($configpath)
+      or die "Could not create directory: $configpath";
     write_file($pemfile, $key->get_private_key_string())
       or die "Could not write private key to $pemfile: $!";
     say "Private key saved to: $pemfile";

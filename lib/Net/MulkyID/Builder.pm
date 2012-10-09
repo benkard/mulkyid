@@ -18,7 +18,9 @@ sub new {
 sub ACTION_build {
   my ($self, @args) = @_;
   eval "use Net::MulkyID::Setup; setup();";
-  #return SUPER::ACTION_build($self, @args);
+  if ($@) {
+    die $@;
+  }
 }
 
 1;
