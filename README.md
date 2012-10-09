@@ -36,6 +36,7 @@ The following CPAN modules need to be installed:
  * `CGI::Session`
  * `common::sense`
  * `Crypt::OpenSSL::RSA`
+ * `Crypt::OpenSSL::Bignum`
  * `File::Slurp`
  * `JSON`
  * `MIME::Base64`
