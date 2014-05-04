@@ -12,11 +12,12 @@ use CGI::Fast;
 use CGI::Session;
 
 use Mail::IMAPTalk ;
+use Net::Google::FederatedLogin;
 #use IO::Socket::SSL;
 
 do "common.pl";
 
-sub check_password($$) {
+sub check_imap_password($$) {
   my ($user, $password) = @_;
 
   #my $socket = IO::Socket::SSL->new('imap.googlemail.com:imaps');
@@ -38,7 +39,7 @@ sub check_password($$) {
 
 
 while (my $cgi = new CGI::Fast) {
-  load_config();
+  load_config;
 
   my $cookie = $cgi->cookie('mulkid_session');
   my $session;
@@ -58,17 +59,38 @@ while (my $cgi = new CGI::Fast) {
                        -cookie       => $cookie);
   }
 
-  my $email    = $cgi->param('email')    or die "No email address provided";
-  my $password = $cgi->param('password') or die "Empty password";
+  my $email = $cgi->param('email') or die "No email address provided";
 
-  for my $user (email_users($email)) {
-    #say STDERR "Trying user: $user";
-    if (check_password($user, $password)) {
-      $session->param('user', $user);
-      say encode_json({user => $user});
+  for ($::MULKONF->{auth_type}) {
+    when ('imap') {
+      my $password = $cgi->param('password') or die "Empty password";
+      for my $user (email_users($email)) {
+        #say STDERR "Trying user: $user";
+        if (check_imap_password($user, $password)) {
+          $session->param('user', $user);
+          #say encode_json({user => $user});
+          print $cgi->redirect(-url => reluri($cgi, 'successful-login.html'));
+          exit 0;
+        }
+      }
+    }
+    when ('google') {
+      my $g = Net::Google::FederatedLogin->new(
+        cgi => $cgi,
+        return_to => $cgi->url()
+      );
+      $g->verify_auth or die "Could not verify the OpenID assertion!";
+      my $ext = $g->get_extension('http://openid.net/srv/ax/1.0');
+      my $verified_email = $ext->get_parameter('value.email');
+      $session->param('user', $verified_email);
+      #say encode_json({user => $user});
+      print $cgi->redirect(-url => reluri($cgi, 'successful-login.html'));
       exit 0;
+    }
+    default {
+      die "Invalid auth_type.  Check MulkyID configuration!";
     }
   }
 
-  die "Could not authenticate with mail server.";
+  die "Could not authenticate.";
 }

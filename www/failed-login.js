@@ -1,0 +1,1 @@
+navigator.id.raiseAuthenticationFailure();

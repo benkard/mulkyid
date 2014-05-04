@@ -6,6 +6,7 @@ use common::sense;
 use Modern::Perl;
 
 use Mail::ExpandAliases;
+use URI;
 
 sub load_config() {
   $::MULKONF = { };
@@ -13,6 +14,8 @@ sub load_config() {
 }
 
 sub email_users($) {
+  return @_
+    if $::MULKONF->{auth_type} eq 'google';
   my ($email) = @_;
   my $alias;
   if ($email =~ /^(.*?)@/) { $alias = $1; }
@@ -24,4 +27,14 @@ sub email_users($) {
   } else {
     return ($alias);
   }
+}
+
+sub reluri($$) {
+  my ($cgi, $x) = @_;
+  my $uri = URI->new($cgi->url(-full=>1));
+  my @path = $uri->path_segments;
+  pop @path;
+  push @path, $x;
+  $uri->path_segments(@path);
+  return "$uri";
 }

@@ -4,6 +4,7 @@
 
 use common::sense;
 use Modern::Perl;
+use syntax 'junction';
 
 use JSON;
 
@@ -85,8 +86,8 @@ while (my $cgi = new CGI::Fast) {
   my $domain;
   if ($email =~ /^(.*?)@(.*)/) { $domain = $2; }
 
-  die "User is not authorized to use this email address"
-    unless ($session_user ~~ [email_users($email)]);
+  die "User $session_user is not authorized to use this email address ($email)"
+    unless any(email_users($email)) eq $session_user;
 
   my $sig = sign $key, decode_json($user_pubkey), $email, $duration, $domain;
   say encode_json({signature => $sig});

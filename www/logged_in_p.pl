@@ -4,6 +4,7 @@
 
 use common::sense;
 use Modern::Perl;
+use syntax 'junction';
 
 use JSON;
 
@@ -35,7 +36,7 @@ while (my $cgi = new CGI::Fast) {
 
   my $email        = $cgi->param('email')    or die "No email address supplied";
   my $session_user = $session->param('user');
-  if ($session_user ~~ [email_users($email)]) {
+  if (any(email_users($email)) eq $session_user) {
     say encode_json({logged_in_p => 1});
   } else {
     say encode_json({logged_in_p => 0});

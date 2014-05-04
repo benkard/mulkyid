@@ -10,7 +10,7 @@ jQuery(function($) {
         $.ajax({
             type: 'POST',
             crossDomain: true,
-            url: '/browserid/logged_in_p.pl',
+            url: 'logged_in_p.pl',
             dataType: 'json',
             data: { email: email },
             success: function(data, status, xhr) {
@@ -19,7 +19,7 @@ jQuery(function($) {
                     console.log('* Not logged in.');
                     return navigator.id.raiseProvisioningFailure('user is not authenticated as target user');
                 } else {
-                    thunk();
+                    return thunk();
                 }
             },
             error: function(data, status, xhr) {
@@ -40,7 +40,7 @@ jQuery(function($) {
             dataType: 'json',
             data: { email: email, pubkey: JSON.stringify(pubkey), duration: cert_duration },
             success: function(data, status, xhr) {
-		console.log('Success!');
+                console.log('Success!');
                 console.log(data);
                 navigator.id.registerCertificate(data.signature);
             },

@@ -24,6 +24,8 @@ my $build = Net::MulkyID::Builder->new
                           "Mail::IMAPTalk" => 0,
                           "Modern::Perl" => 0,
                           "Time::HiRes" => 0,
+                          "Syntax::Keyword::Junction" => 0,
+                          "Net::Google::FederatedLogin" => 0,
                          },
    build_requires     => {
                           "LWP::Simple" => 0,

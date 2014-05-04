@@ -1,5 +1,5 @@
 #! /usr/bin/env perl
-# Copyright 2012, Matthias Andreas Benkard <code@mail.matthias.benkard.de>.
+# Copyright 2012, 2014, Matthias Andreas Benkard <code@mail.matthias.benkard.de>.
 
 package Net::MulkyID::Setup;
 
@@ -30,13 +30,13 @@ sub prompt($$) {
   }
 }
 
-sub makespec($) {
-  my ($key) = @_;
+sub makespec($$) {
+  my ($key, $basepath) = @_;
   my ($n, $e, @stuff) = $key->get_key_parameters;
   return
     encode_json({"public-key"     => {e => $e->to_decimal, n => $n->to_decimal, algorithm => "RS"},
-                 "authentication" => "/browserid/authenticate.html",
-                 "provisioning"   => "/browserid/provision.html"});
+                 "authentication" => "$basepath/authenticate.html",
+                 "provisioning"   => "$basepath/provision.html"});
 };
 
 sub setup() {
@@ -49,16 +49,29 @@ sub setup() {
     do $conffile;
   }
 
-  my $configpath = $::MULKONF->{configpath} // "/etc/mulkyid";
-  $configpath    = prompt("Where shall I put configuration files?", $configpath);
-  my $pemfile    = $::MULKONF->{pemfile}    // "$configpath/rsa2048.pem";
-  $pemfile       = prompt("Where shall I put the private key?", $pemfile);
+  my $configpath   = $::MULKONF->{configpath}   // "/etc/mulkyid";
+  my $pemfile      = $::MULKONF->{pemfile}      // "$configpath/rsa2048.pem";
+  my $auth_type    = $::MULKONF->{auth_type}   // "imap";
   my $aliases_file = $::MULKONF->{aliases_file} // "/etc/aliases";
-  $aliases_file  = prompt("Where is the aliases file?  Type a single dot for none.", $aliases_file);
-  my $imap_server = $::MULKONF->{imap_server} // "localhost";
-  $imap_server  = prompt("What is the IMAP server's address?", $imap_server);
-  my $imap_port = $::MULKONF->{imap_port} // 143;
-  $imap_port  = int(prompt("What is the IMAP server's port?", $imap_port));
+  my $imap_server  = $::MULKONF->{imap_server}  // "localhost";
+  my $imap_port    = $::MULKONF->{imap_port}    // 143;
+  my $basepath     = $::MULKONF->{basepath}     // "/browserid";
+  $configpath = prompt("Where shall I put configuration files?", $configpath);
+  $pemfile    = prompt("Where shall I put the private key?", $pemfile);
+  $auth_type  = prompt("How will users authenticate? (imap, google)", $auth_type);
+  $basepath   = int(prompt("What will be the web-facing base path for IdP files and scripts?", $basepath));
+  for ($auth_type) {
+    when ("imap") {
+      $aliases_file = prompt("Where is the aliases file?  Type a single dot for none.", $aliases_file);
+      $imap_server  = prompt("What is the IMAP server's address?", $imap_server);
+      $imap_port    = int(prompt("What is the IMAP server's port?", $imap_port));
+    }
+    when ("google") {
+    }
+    default {
+      die "Invalid authentication type";
+    }
+  }
 
   say "OK.";
 
@@ -81,8 +94,7 @@ sub setup() {
   } else {
     say "Generating private key...";
     $key = Crypt::OpenSSL::RSA->generate_key(2048);
-    make_path($configpath)
-      or die "Could not create directory: $configpath";
+    make_path($configpath);
     write_file($pemfile, $key->get_private_key_string())
       or die "Could not write private key to $pemfile: $!";
     say "Private key saved to: $pemfile";
@@ -90,7 +102,7 @@ sub setup() {
   }
 
   # Generate spec file.
-  write_file("browserid.json", makespec $key)
+  write_file("browserid.json", makespec($key, $basepath))
     or die "Could not write spec to browserid.json: $!";
   say "Persona spec file saved to: browserid.json";
 
@@ -100,7 +112,8 @@ sub setup() {
     pemfile      => $pemfile,
     aliases_file => $aliases_file,
     imap_server  => $imap_server,
-    imap_port    => $imap_port
+    imap_port    => $imap_port,
+    basepath     => $basepath,
   };
   write_file($conffile, <<EOF
 #! /usr/bin/env perl
