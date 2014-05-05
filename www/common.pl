@@ -14,9 +14,12 @@ sub load_config() {
 }
 
 sub email_users($) {
-  return @_
-    if $::MULKONF->{auth_type} eq 'google';
   my ($email) = @_;
+  my $fakedomain = $::MULKONF->{fake_domain};
+  my $realdomain = $::MULKONF->{real_domain};
+  $email =~ s/\@$realdomain/\@$fakedomain/ if $fakedomain;
+  return ($email)
+    if $::MULKONF->{auth_type} eq 'google';
   my $alias;
   if ($email =~ /^(.*?)@/) { $alias = $1; }
   my $aliases_file = $::MULKONF->{aliases};

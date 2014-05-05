@@ -39,40 +39,24 @@ sub check_imap_password($$) {
 
 
 while (my $cgi = new CGI::Fast) {
-  load_config;
+  load_config();
 
   my $cookie = $cgi->cookie('mulkid_session');
-  my $session;
-  if ($cookie) {
-    $session = new CGI::Session("driver:File", $cookie, {Directory=>"/tmp"});
-    print $cgi->header(-content_type => 'application/json; charset=UTF-8');
-  } else {
-    $session = new CGI::Session("driver:File", undef, {Directory=>"/tmp"});
-    my $cookie = $cgi->cookie(-name     => 'mulkid_session',
-                              -value    => $session->id,
-                              -expires  => '+1d',
-                              -secure   => 1,
-                              -httponly => 1,
-                              #-domain   => '.mulk.eu'
-                             );
-    print $cgi->header(-content_type => 'application/json; charset=UTF-8',
-                       -cookie       => $cookie);
-  }
-
-  my $email = $cgi->param('email') or die "No email address provided";
-
-  for ($::MULKONF->{auth_type}) {
+  my $session = new CGI::Session("driver:File", $cookie, {Directory=>"/tmp"});
+  given (my $_ = $::MULKONF->{auth_type}) {
     when ('imap') {
+      my $email = $cgi->param('email') or die "No email address provided";
       my $password = $cgi->param('password') or die "Empty password";
       for my $user (email_users($email)) {
         #say STDERR "Trying user: $user";
         if (check_imap_password($user, $password)) {
           $session->param('user', $user);
-          #say encode_json({user => $user});
-          print $cgi->redirect(-url => reluri($cgi, 'successful-login.html'));
+          print $cgi->header(-content_type => 'application/json; charset=UTF-8');
+          say encode_json({user => $user});
           exit 0;
         }
       }
+      die "Could not authenticate.";
     }
     when ('google') {
       my $g = Net::Google::FederatedLogin->new(
@@ -82,8 +66,10 @@ while (my $cgi = new CGI::Fast) {
       $g->verify_auth or die "Could not verify the OpenID assertion!";
       my $ext = $g->get_extension('http://openid.net/srv/ax/1.0');
       my $verified_email = $ext->get_parameter('value.email');
+      my $fakedomain = $::MULKONF->{fake_domain};
+      my $realdomain = $::MULKONF->{real_domain};
+      $verified_email =~ s/\@$realdomain/\@$fakedomain/ if $fakedomain;
       $session->param('user', $verified_email);
-      #say encode_json({user => $user});
       print $cgi->redirect(-url => reluri($cgi, 'successful-login.html'));
       exit 0;
     }
@@ -91,6 +77,4 @@ while (my $cgi = new CGI::Fast) {
       die "Invalid auth_type.  Check MulkyID configuration!";
     }
   }
-
-  die "Could not authenticate.";
 }

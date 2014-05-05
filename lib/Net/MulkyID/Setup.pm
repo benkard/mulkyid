@@ -51,22 +51,31 @@ sub setup() {
 
   my $configpath   = $::MULKONF->{configpath}   // "/etc/mulkyid";
   my $pemfile      = $::MULKONF->{pemfile}      // "$configpath/rsa2048.pem";
-  my $auth_type    = $::MULKONF->{auth_type}   // "imap";
+  my $auth_type    = $::MULKONF->{auth_type}    // "imap";
   my $aliases_file = $::MULKONF->{aliases_file} // "/etc/aliases";
   my $imap_server  = $::MULKONF->{imap_server}  // "localhost";
   my $imap_port    = $::MULKONF->{imap_port}    // 143;
   my $basepath     = $::MULKONF->{basepath}     // "/browserid";
+  my $fake_domain  = $::MULKONF->{fake_domain}  // "";
+  my $real_domain  = $::MULKONF->{real_domain}  // "";
   $configpath = prompt("Where shall I put configuration files?", $configpath);
   $pemfile    = prompt("Where shall I put the private key?", $pemfile);
   $auth_type  = prompt("How will users authenticate? (imap, google)", $auth_type);
-  $basepath   = int(prompt("What will be the web-facing base path for IdP files and scripts?", $basepath));
-  for ($auth_type) {
+  $basepath   = prompt("What will be the web-facing base path for IdP files and scripts?", $basepath);
+  given (my $_ = $auth_type) {
     when ("imap") {
       $aliases_file = prompt("Where is the aliases file?  Type a single dot for none.", $aliases_file);
       $imap_server  = prompt("What is the IMAP server's address?", $imap_server);
       $imap_port    = int(prompt("What is the IMAP server's port?", $imap_port));
     }
     when ("google") {
+      $fake_domain = prompt("Fake domain name for email addresses?  Type a single dot for none. (FOR DEVELOPMENT)", $fake_domain);
+      if ($fake_domain eq '.' or $fake_domain eq '') {
+        $fake_domain = '';
+      } else {
+        $real_domain = prompt("Real domain name?", $real_domain);
+        $real_domain = '' if ($real_domain eq '.');
+      }
     }
     default {
       die "Invalid authentication type";
@@ -114,6 +123,9 @@ sub setup() {
     imap_server  => $imap_server,
     imap_port    => $imap_port,
     basepath     => $basepath,
+    auth_type    => $auth_type,
+    fake_domain  => $fake_domain,
+    real_domain  => $real_domain,
   };
   write_file($conffile, <<EOF
 #! /usr/bin/env perl
