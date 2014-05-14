@@ -83,12 +83,10 @@ while (my $cgi = new CGI::Fast) {
   my $email        = $cgi->param('email')    or die "No email address supplied";
   my $session_user = $session->param('user');
 
-  my $domain;
-  if ($email =~ /^(.*?)@(.*)/) { $domain = $2; }
-
   die "User $session_user is not authorized to use this email address ($email)"
     unless any(email_users($email)) eq $session_user;
 
+  my $domain = $::MULKONF->{real_domain};
   my $sig = sign $key, decode_json($user_pubkey), $email, $duration, $domain;
   say encode_json({signature => $sig});
 }
