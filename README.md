@@ -33,7 +33,6 @@ The following CPAN modules need to be installed:
 
  * `CGI`
  * `CGI::Fast`
- * `CGI::Session`
  * `common::sense`
  * `Crypt::OpenSSL::RSA`
  * `Crypt::OpenSSL::Bignum`

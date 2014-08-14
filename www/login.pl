@@ -7,9 +7,13 @@ use Modern::Perl;
 
 use JSON;
 
+use File::Slurp;
+
+use Crypt::OpenSSL::RSA;
+
 use CGI;
 use CGI::Fast;
-use CGI::Session;
+use CGI::Cookie;
 
 use Mail::IMAPTalk ;
 use Net::Google::FederatedLogin;
@@ -37,12 +41,21 @@ sub check_imap_password($$) {
   }
 }
 
+sub cookie_for_user {
+  my ($user) = @_;
+
+  my $key = Crypt::OpenSSL::RSA->new_private_key(scalar read_file($::MULKONF->{pemfile}));
+  $key->use_pkcs1_padding();
+  $key->use_sha256_hash();
+
+  my $plain_user_session = $user . '#' . time;
+  my $reverse_encrypted_user_session = $key->private_encrypt($plain_user_session);
+  my $cookie = CGI::Cookie->new(-name => 'mulkyid_session', -value =>encode_base64_url($reverse_encrypted_user_session));
+}
 
 while (my $cgi = new CGI::Fast) {
   load_config();
 
-  my $cookie = $cgi->cookie('mulkid_session');
-  my $session = new CGI::Session("driver:File", $cookie, {Directory=>"/tmp"});
   given (my $_ = $::MULKONF->{auth_type}) {
     when ('imap') {
       my $email = $cgi->param('email') or die "No email address provided";
@@ -50,8 +63,8 @@ while (my $cgi = new CGI::Fast) {
       for my $user (email_users($email)) {
         #say STDERR "Trying user: $user";
         if (check_imap_password($user, $password)) {
-          $session->param('user', $user);
           print $cgi->header(-content_type => 'application/json; charset=UTF-8');
+          print $cgi->header(-cookie=>cookie_for_user($user));
           say encode_json({user => $user});
           exit 0;
         }
@@ -69,8 +82,7 @@ while (my $cgi = new CGI::Fast) {
       my $fakedomain = $::MULKONF->{fake_domain};
       my $realdomain = $::MULKONF->{real_domain};
       $verified_email =~ s/\@$realdomain/\@$fakedomain/ if $fakedomain;
-      $session->param('user', $verified_email);
-      print $cgi->redirect(-url => reluri($cgi, 'successful-login.html'));
+      print $cgi->redirect(-cookie => cookie_for_user($verified_email), -url => reluri($cgi, 'successful-login.html'));
       exit 0;
     }
     default {

@@ -9,44 +9,23 @@ use JSON;
 
 use CGI;
 use CGI::Fast;
-use CGI::Session;
 
 use Net::Google::FederatedLogin;
 
 do "common.pl";
 
-sub redirect_with_cookie($$$$) {
-  my ($cgi, $uri, $session, $cookie) = @_;
-  if ($cookie) {
-    print $cgi->redirect(-url => $uri);
-  } else {
-    my $cookie = $cgi->cookie(-name     => 'mulkid_session',
-                              -value    => $session->id,
-                              -expires  => '+1d',
-                              -secure   => 1,
-                              -httponly => 1,
-                              #-domain   => '.'.$::MULKONF->{realm}
-                             );
-    print $cgi->redirect(-cookie => $cookie, -url => $uri);
-  }
-}
-
 while (my $cgi = new CGI::Fast) {
   load_config();
 
-  my $claimed_email = $cgi->param('email');
-  my $cookie = $cgi->cookie('mulkid_session');
-  my $session = new CGI::Session("driver:File", $cookie, {Directory=>"/tmp"});
-
   my $fakedomain = $::MULKONF->{fake_domain};
   my $realdomain = $::MULKONF->{real_domain};
-  $claimed_email =~ s/\@$fakedomain/\@$realdomain/ if $fakedomain;
 
-  $session->param('claimed_email', $claimed_email);
+  my $claimed_email = $cgi->param('email');
+  $claimed_email =~ s/\@$fakedomain/\@$realdomain/ if $fakedomain;
 
   given (my $_ = $::MULKONF->{auth_type}) {
     when ('imap') {
-      redirect_with_cookie($cgi, reluri($cgi, "authenticate-with-password.html?email=$claimed_email"), $session, $cookie);
+      print $cgi->redirect(reluri($cgi, "authenticate-with-password.html?email=$claimed_email"));
     }
     when ('google') {
       my $g = Net::Google::FederatedLogin->new(
@@ -58,7 +37,7 @@ while (my $cgi = new CGI::Fast) {
                                         required    => 'email',
                                         type        => {email => 'http://axschema.org/contact/email'}}}]
       );
-      redirect_with_cookie($cgi, $g->get_auth_url(), $session, $cookie);
+      print $cgi->redirect($g->get_auth_url());
     }
     default {
       die "Invalid auth_type! " . $::MULKONF->{auth_type};

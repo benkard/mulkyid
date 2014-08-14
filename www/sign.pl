@@ -14,30 +14,10 @@ use File::Slurp;
 
 use CGI;
 use CGI::Fast;
-use CGI::Session;
-
-use MIME::Base64 qw(encode_base64 decode_base64);
 
 use Time::HiRes qw(time);
 
 do "common.pl";
-
-
-sub decode_base64_url($) {
-  # From: https://github.com/ptarjan/base64url/blob/master/perl.pl
-  (my $s = shift) =~ tr{-_}{+/};
-  $s .= '=' x (4 - length($s));
-  return decode_base64($s);
-}
-
-sub encode_base64_url($) {
-  my ($s) = shift;
-  $s = encode_base64($s);
-  $s =~ tr{+/}{-_};
-  $s =~ s/=*$//;
-  $s =~ s/\n//g;
-  return $s;
-}
 
 
 sub sign($$$$$) {
@@ -70,18 +50,21 @@ while (my $cgi = new CGI::Fast) {
   $::MULKONF = {};   # to silence a warning
   load_config();
 
-  my $cookie = $cgi->cookie('mulkid_session') or die "No session cookie";
-  my $session = new CGI::Session("driver:File", $cookie, {Directory=>"/tmp"}) or die "Invalid session cookie";
-  print $cgi->header(-content_type => 'application/json; charset=UTF-8');
-
   my $key = Crypt::OpenSSL::RSA->new_private_key(scalar read_file($::MULKONF->{pemfile}));
   $key->use_pkcs1_padding();
   $key->use_sha256_hash();
 
+  my $cookie = $cgi->cookie('mulkyid_session') or die "No session cookie";
+  my $reverse_encrypted_user_session = decode_base64_url($cookie);
+  my $plain_user_session = $key->public_decrypt($reverse_encrypted_user_session);
+  my ($session_user, $timestamp) = split /#/, $plain_user_session;
+  die "User cookie too old" if $timestamp < time - 24*3600;
+
+  print $cgi->header(-content_type => 'application/json; charset=UTF-8');
+
   my $user_pubkey  = $cgi->param('pubkey')   or die "Nothing to sign";
   my $duration     = $cgi->param('duration') || 24*3600;
   my $email        = $cgi->param('email')    or die "No email address supplied";
-  my $session_user = $session->param('user');
 
   die "User $session_user is not authorized to use this email address ($email)"
     unless any(email_users($email)) eq $session_user;

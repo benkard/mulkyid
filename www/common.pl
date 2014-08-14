@@ -7,6 +7,7 @@ use Modern::Perl;
 
 use Mail::ExpandAliases;
 use URI;
+use MIME::Base64 qw(encode_base64 decode_base64);
 
 sub load_config() {
   $::MULKONF = { };
@@ -40,4 +41,20 @@ sub reluri($$) {
   push @path, $x;
   $uri->path_segments(@path);
   return "$uri";
+}
+
+sub decode_base64_url($) {
+  # From: https://github.com/ptarjan/base64url/blob/master/perl.pl
+  (my $s = shift) =~ tr{-_}{+/};
+  $s .= '=' x (4 - length($s));
+  return decode_base64($s);
+}
+
+sub encode_base64_url($) {
+  my ($s) = shift;
+  $s = encode_base64($s);
+  $s =~ tr{+/}{-_};
+  $s =~ s/=*$//;
+  $s =~ s/\n//g;
+  return $s;
 }
