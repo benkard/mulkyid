@@ -35,11 +35,7 @@ sub email_users($) {
 
 sub reluri($$) {
   my ($cgi, $x) = @_;
-  my $uri = URI->new($cgi->url(-full=>1));
-  my @path = $uri->path_segments;
-  pop @path;
-  push @path, $x;
-  $uri->path_segments(@path);
+  my $uri = "https://" . $::MULKONF->{real_domain} . $::MULKONF->{basepath} . "/$x";
   return "$uri";
 }
 

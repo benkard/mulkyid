@@ -74,7 +74,7 @@ while (my $cgi = new CGI::Fast) {
     when ('google') {
       my $g = Net::Google::FederatedLogin->new(
         cgi => $cgi,
-        return_to => $cgi->url()
+        return_to => reluri($cgi, "login.pl")
       );
       $g->verify_auth or die "Could not verify the OpenID assertion!";
       my $ext = $g->get_extension('http://openid.net/srv/ax/1.0');
