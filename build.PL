@@ -25,7 +25,11 @@ my $build = Net::MulkyID::Builder->new
                           "Modern::Perl" => 0,
                           "Time::HiRes" => 0,
                           "Syntax::Keyword::Junction" => 0,
-                          "Net::Google::FederatedLogin" => 0,
+                          "OIDC::Lite" => 0,
+                          "OIDC::Lite::Client::WebServer" => 0,
+                          "OIDC::Lite::Model::IDToken" => 0,
+                          "LWP::UserAgent" => 0,
+                          "HTTP::Request" => 0
                          },
    build_requires     => {
                           "LWP::Simple" => 0,

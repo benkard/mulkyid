@@ -36,7 +36,7 @@ jQuery(function($) {
         $.ajax({
             type: 'POST',
             crossDomain: true,
-            url: '/browserid/sign.pl',
+            url: 'sign.pl',
             dataType: 'json',
             data: { email: email, pubkey: JSON.stringify(pubkey), duration: cert_duration },
             success: function(data, status, xhr) {

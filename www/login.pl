@@ -16,8 +16,14 @@ use CGI::Fast;
 use CGI::Cookie;
 
 use Mail::IMAPTalk ;
-use Net::Google::FederatedLogin;
 #use IO::Socket::SSL;
+
+use OIDC::Lite;
+use OIDC::Lite::Client::WebServer;
+use OIDC::Lite::Model::IDToken;
+
+use LWP::UserAgent;
+use HTTP::Request;
 
 do "common.pl";
 
@@ -72,18 +78,45 @@ while (my $cgi = new CGI::Fast) {
       die "Could not authenticate.";
     }
     when ('google') {
-      my $g = Net::Google::FederatedLogin->new(
-        cgi => $cgi,
-        return_to => reluri($cgi, "login.pl")
+      my $code = $cgi->param('code') or die "Authorization code is missing.";
+      my $oidc_client = OIDC::Lite::Client::WebServer->new(
+        id => $::MULKONF->{'google_oauth2_client_id'},
+        secret => $::MULKONF->{'google_oauth2_client_secret'},
+        authorize_uri => 'https://accounts.google.com/o/oauth2/auth',
+        access_token_uri => 'https://accounts.google.com/o/oauth2/token'
       );
-      $g->verify_auth or die "Could not verify the OpenID assertion!";
-      my $ext = $g->get_extension('http://openid.net/srv/ax/1.0');
-      my $verified_email = $ext->get_parameter('value.email');
-      my $fakedomain = $::MULKONF->{fake_domain};
-      my $realdomain = $::MULKONF->{real_domain};
+
+      # Acquire access token.
+      my $token = $oidc_client->get_access_token(
+        code => $code,
+        redirect_uri => reluri($cgi, 'login.pl')
+      );
+      unless ($token) {
+        my $oidc_response = $oidc_client->last_response;
+        die "Could not acquire access token: " . $oidc_response->code . " (" . $oidc_response->content . ")";
+      }
+
+      # Extract ID token.
+      my $id_token = OIDC::Lite::Model::IDToken->load($token->id_token);
+
+      # Acquire user information.
+      my $userinfo_request =  HTTP::Request->new(GET => 'https://www.googleapis.com/oauth2/v3/userinfo');
+      $userinfo_request->header(Authorization => "Bearer " . $token->access_token);
+      my $userinfo_response = LWP::UserAgent->new->request($userinfo_request);
+      unless ($userinfo_response->is_success) {
+        die "Could not acquire user information: " . $userinfo_response->code . " (" . $userinfo_response->content . ")";
+      }
+      my $userinfo = decode_json($userinfo_response->content);
+
+      # Verify e-mail and sign user's identity assertion.
+      unless ($userinfo->{'email_verified'}) {
+        die "User email is not verified."
+      }
+      my $verified_email = $userinfo->{'email'};
+      my $fakedomain = $::MULKONF->{'fake_domain'};
+      my $realdomain = $::MULKONF->{'real_domain'};
       $verified_email =~ s/\@$realdomain/\@$fakedomain/ if $fakedomain;
       print $cgi->redirect(-cookie => cookie_for_user($verified_email), -url => reluri($cgi, 'successful-login.html'));
-      exit 0;
     }
     default {
       die "Invalid auth_type.  Check MulkyID configuration!";
