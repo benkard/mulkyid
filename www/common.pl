@@ -5,9 +5,12 @@ use common::sense;
 #use Modern::Perl 2011;
 use Modern::Perl;
 
+use File::Slurp;
 use Mail::ExpandAliases;
 use URI;
 use MIME::Base64 qw(encode_base64 decode_base64);
+use Crypt::OpenSSL::RSA;
+use CGI::Cookie;
 
 sub load_config() {
   $::MULKONF = { };
@@ -53,4 +56,28 @@ sub encode_base64_url($) {
   $s =~ s/=*$//;
   $s =~ s/\n//g;
   return $s;
+}
+
+sub acquire_private_key() {
+  my $key = Crypt::OpenSSL::RSA->new_private_key(scalar read_file($::MULKONF->{pemfile}));
+  $key->use_pkcs1_padding();
+  $key->use_sha256_hash();
+  return $key;
+}
+
+sub make_cookie($$) {
+  my ($name, $value) = @_;
+  my $key = acquire_private_key;
+  my $reverse_encrypted_value = $key->private_encrypt($value);
+  my $cookie = CGI::Cookie->new(-name => $name, -value =>encode_base64_url($reverse_encrypted_value));
+}
+
+sub read_cookie($$) {
+  my ($cgi, $name) = @_;
+  my $cookie = $cgi->cookie($name);
+  return unless ($cookie);
+  my $key = acquire_private_key;
+  my $value = $key->public_decrypt(decode_base64_url($cookie));
+  warn "cookie `$name` was forged!" unless $value;
+  return $value;
 }

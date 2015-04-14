@@ -29,7 +29,9 @@ my $build = Net::MulkyID::Builder->new
                           "OIDC::Lite::Client::WebServer" => 0,
                           "OIDC::Lite::Model::IDToken" => 0,
                           "LWP::UserAgent" => 0,
-                          "HTTP::Request" => 0
+                          "HTTP::Request" => 0,
+                          "Math::Random::ISAAC::XS" => 0,
+                          "Bytes::Random::Secure" => 0
                          },
    build_requires     => {
                           "LWP::Simple" => 0,

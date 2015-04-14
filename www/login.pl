@@ -79,6 +79,14 @@ while (my $cgi = new CGI::Fast) {
     }
     when ('google') {
       my $code = $cgi->param('code') or die "Authorization code is missing.";
+
+      # Validate CSRF token.
+      my $oauth_state = $cgi->param('state');
+      my $csrf_token = read_cookie($cgi, 'mulkyid_csrf_token');
+      unless ($csrf_token && $oauth_state && $csrf_token eq $oauth_state) {
+        die "CSRF token was forged!";
+      }
+
       my $oidc_client = OIDC::Lite::Client::WebServer->new(
         id => $::MULKONF->{'google_oauth2_client_id'},
         secret => $::MULKONF->{'google_oauth2_client_secret'},

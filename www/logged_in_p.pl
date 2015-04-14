@@ -52,4 +52,3 @@ while (my $cgi = new CGI::Fast) {
     say encode_json({logged_in_p => 0});
   }
 }
-

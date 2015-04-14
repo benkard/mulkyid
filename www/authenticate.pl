@@ -13,6 +13,8 @@ use CGI::Fast;
 use OIDC::Lite;
 use OIDC::Lite::Client::WebServer;
 
+use Bytes::Random::Secure qw(random_bytes_base64);
+
 do "common.pl";
 
 while (my $cgi = new CGI::Fast) {
@@ -35,18 +37,20 @@ while (my $cgi = new CGI::Fast) {
         authorize_uri => 'https://accounts.google.com/o/oauth2/auth',
         access_token_uri => 'https://accounts.google.com/o/oauth2/token'
       );
-      # FIXME: Make `state` a unique, random session token!  (Maybe a
-      # signed, timestamped web token, so stateless?)
-      print $cgi->redirect($oidc_client->uri_to_redirect(
-        redirect_uri => reluri($cgi, 'login.pl'),
-        scope => 'openid email',
-        state => '',
-        extra => {
-          access_type => 'online',
-          login_hint => $claimed_email,
-          response_type => 'code'
-        }
-      ));
+      my $csrf_token = random_bytes_base64(32);  #256 bits
+      my $csrf_token_cookie = make_cookie('mulkyid_csrf_token', $csrf_token);
+      print $cgi->redirect(
+        -cookie => $csrf_token_cookie,
+        -url => $oidc_client->uri_to_redirect(
+          redirect_uri => reluri($cgi, 'login.pl'),
+          scope => 'openid email',
+          state => $csrf_token,
+          extra => {
+            access_type => 'online',
+            login_hint => $claimed_email,
+            response_type => 'code'
+          })
+      );
     }
     default {
       die "Invalid auth_type! " . $::MULKONF->{auth_type};
