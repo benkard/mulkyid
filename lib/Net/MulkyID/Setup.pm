@@ -58,6 +58,8 @@ sub setup() {
   my $basepath     = $::MULKONF->{basepath}     // "/browserid";
   my $fake_domain  = $::MULKONF->{fake_domain}  // "";
   my $real_domain  = $::MULKONF->{real_domain}  // "";
+  my $google_oauth2_client_secret = $::MULKONF->{google_oauth2_client_secret}  // "";
+  my $google_oauth2_client_id     = $::MULKONF->{google_oauth2_client_id}      // "";
   $configpath = prompt("Where shall I put configuration files?", $configpath);
   $pemfile    = prompt("Where shall I put the private key?", $pemfile);
   $auth_type  = prompt("How will users authenticate? (imap, google)", $auth_type);
@@ -76,6 +78,8 @@ sub setup() {
         $real_domain = prompt("Real domain name?", $real_domain);
         $real_domain = '' if ($real_domain eq '.');
       }
+      $google_oauth2_client_id = prompt("Google OAuth2 client ID?", $google_oauth2_client_id);
+      $google_oauth2_client_secret = prompt("Google OAuth2 client secret?", $google_oauth2_client_secret);
     }
     default {
       die "Invalid authentication type";
@@ -126,6 +130,8 @@ sub setup() {
     auth_type    => $auth_type,
     fake_domain  => $fake_domain,
     real_domain  => $real_domain,
+    google_oauth2_client_secret => $google_oauth2_client_secret,
+    google_oauth2_client_id     => $google_oauth2_client_id
   };
   write_file($conffile, <<EOF
 #! /usr/bin/env perl
