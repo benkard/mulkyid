@@ -11,4 +11,4 @@ www/logged_in_p.pl
 www/sign.pl
 COPYING.AGPL
 README.md
-build.PL
+Build.PL

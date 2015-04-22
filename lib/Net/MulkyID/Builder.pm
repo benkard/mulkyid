@@ -10,14 +10,19 @@ sub new {
   my ($class, @args) = @_;
   my $self = $class->SUPER::new(@args);
   return bless $self, $class;
-  #my $self = $self->SUPER::new();
-  #return $self;
-  #return bless {}, shift;
+}
+
+sub ACTION_configure {
+  my ($self, @args) = @_;
+  eval "use Net::MulkyID::Setup; configure();";
+  if ($@) {
+    die $@;
+  }
 }
 
 sub ACTION_build {
   my ($self, @args) = @_;
-  eval "use Net::MulkyID::Setup; setup();";
+  eval "use Net::MulkyID::Setup; build();";
   if ($@) {
     die $@;
   }
